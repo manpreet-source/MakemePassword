@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//opt/homebrew/**)",
+      "Read(//opt/**)",
+      "Bash(curl -sI https://nodejs.org)",
+      "Bash(xcrun -f node)",
+      "Read(//Users/adquark/.local/share/**)",
+      "Bash(curl -s https://nodejs.org/dist/index.json)",
+      "Bash(node -e '')",
+      "Bash(curl -s https://nodejs.org/dist/index.json -o /tmp/node-index.json)",
+      "Bash(python3 -c ' *)",
+      "Bash(git mv *)",
+      "Bash(git rm *)"
+    ]
+  }
+}

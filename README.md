@@ -1,96 +1,118 @@
 # MakeMePassword
 
-MakeMePassword is a local-first username and password generator. The public experience is dependency-free HTML, CSS, and JavaScript so it can be deployed to any static host.
+MakeMePassword is a local-first username and password generator with a private,
+authenticated admin analytics dashboard built on Google Analytics 4 (GA4).
 
 ## Run locally
 
 ```sh
-python3 -m http.server 4173
+npm install
+npm run dev
 ```
 
-Open <http://localhost:4173>.
+Open <http://localhost:3000>.
 
-## Included
+## The public product
 
-- Cryptographically secure passwords via `crypto.getRandomValues()`.
+- Cryptographically secure passwords via `crypto.getRandomValues()` (see `lib/generators`).
 - Username styles for memorable, gaming, professional, anonymous, minimal, and random results.
-- Password length, symbols, lookalike exclusion, show/hide, copy, and regeneration controls.
-- Combined generation without storing credential values, including a Copy both action.
-- Local username and password checkers with strength levels, reasons, recommendations, and password visibility controls.
-- Responsive layout, dark mode, keyboard-friendly native controls, reduced dependency surface, and accessible live regions.
-- SEO title, description, Open Graph metadata, canonical URL, `robots.txt`, and `sitemap.xml`.
-- Privacy-safe GA4 event hooks. Events include action metadata and never include generated values or clipboard contents.
+- Password presets (Easy, Strong, Very Strong, Maximum Strength, Wi-Fi, Developer, Random) and an
+  advanced-options panel (avoid repeated/sequential characters, pronounceable, minimum digits/symbols).
+- Local username and password checkers with strength levels, reasons, and recommendations. Checked
+  and generated values never leave the browser.
+- Responsive layout, dark mode, and an analytics consent banner.
 
-## GA4 setup
+None of this requires the admin dashboard to be configured — the generator and checker work fully
+offline with no server credentials.
 
-The app exposes `safeEvent()` in `app.js`. Add the GA4 browser tag only after implementing the consent choice required for your audience. The public measurement ID may be configured through your host's build process; never put Data API credentials in browser code.
+## Analytics
 
-Example tag, placed after consent and with your own measurement ID:
+GA4 is loaded client-side only after the visitor accepts the consent banner, via
+`lib/analytics/gtag.ts`. All product events are emitted through `lib/analytics/events.ts`'s
+`track()` function, which:
 
-```html
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-XXXXXXXXXX', { anonymize_ip: true });
-</script>
-```
+- No-ops until consent is accepted (`hasAnalyticsConsent()`).
+- Throws if a caller ever tries to attach a parameter named `username`, `password`, `credential`,
+  `clipboard`, `value`, or `text` — a defense-in-depth guard against accidentally sending sensitive
+  data, on top of only ever passing safe metadata like `generator_type` or `length_bucket`.
 
-The existing events are deliberately limited to safe metadata:
+See `docs/analytics-events.md` for the full event contract, and set `NEXT_PUBLIC_GA_MEASUREMENT_ID`
+to your GA4 measurement ID to enable it. This value is public by design (it's the same ID GA4's own
+browser snippet embeds); never put Data API credentials in it or in any other `NEXT_PUBLIC_*` variable.
 
-- `generate_username`
-- `generate_password`
-- `generate_both`
-- `copy_username`
-- `copy_password`
-- `copy_both`
-- `username_checked`
-- `password_checked`
-- `recommendation_clicked`
-- `theme_changed`
-- `generator_mode_changed`
+## Admin analytics dashboard
 
-Do not add `username`, `password`, clipboard text, or the full credential object as an event parameter.
-
-## Secure admin analytics architecture
-
-A protected analytics dashboard cannot safely be implemented as a static page. The production setup should be:
+`/admin` is a protected dashboard for the site owner: traffic, audience, geography, devices,
+browsers, popular pages, events/engagement, generator usage, and realtime active users, all backed
+by the Google Analytics Data API. Architecture:
 
 ```text
 Authenticated admin browser
         |
         v
-Your server-side /api/admin/analytics/* endpoints
+/api/admin/analytics/* (this server)
         |
         v
 Google Analytics Data API
 ```
 
-Required server-side behavior:
+The browser never receives Google API credentials. Every request under `/api/admin/analytics/*`:
 
-1. Authenticate the administrator with a real provider or secure session.
-2. Authorize an `admin` role before every analytics request.
-3. Keep service-account keys, OAuth secrets, refresh tokens, and `GA_PROPERTY_ID` server-side.
-4. Validate date ranges and supported dimensions on the server.
-5. Cache GA responses briefly and rate-limit refreshes.
-6. Return aggregated data only. Do not accept or log credential values.
-7. Add `X-Robots-Tag: noindex, nofollow` to admin responses and keep `/admin` in `robots.txt`.
+1. Requires a NextAuth session via Google OAuth, scoped to `ADMIN_EMAIL`.
+2. Re-checks the admin role server-side (never trusts the client).
+3. Validates report name and date-range parameters.
+4. Is rate-limited per admin (60 requests/minute for reports, 10/minute for connection tests).
+5. Queries GA4 through `lib/ga4/client.ts`, cached in-process for 2 minutes to avoid hammering the
+   Data API on every dashboard refresh.
+6. Returns only aggregated, named JSON (see `lib/ga4/shape.ts`) — never the raw Google API response,
+   and never anything that could identify an individual visitor.
 
-Suggested endpoints:
+If GA4 isn't configured yet, every page shows a "setup required" state instead of fabricated
+numbers. If a report legitimately has no data for the selected range, it shows "No analytics data
+available for this period." instead of a fake chart.
 
-```text
-GET /api/admin/analytics/overview
-GET /api/admin/analytics/traffic
-GET /api/admin/analytics/geography
-GET /api/admin/analytics/devices
-GET /api/admin/analytics/browsers
-GET /api/admin/analytics/pages
-GET /api/admin/analytics/events
+### Setting it up
+
+1. Create a Google OAuth web client and set `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, and a long
+   random `AUTH_SECRET`.
+2. Add the authorized administrator email(s) to `ADMIN_EMAIL` (comma-separated).
+3. Create a GA4 property, set `GA_PROPERTY_ID`, and grant the service account below Viewer access
+   to that property.
+4. Create a Google Cloud service account with the Analytics Data API enabled, and set
+   `GOOGLE_SERVICE_ACCOUNT_EMAIL` and `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` — server-only secrets,
+   never committed to git or exposed as `NEXT_PUBLIC_*`.
+5. Configure the OAuth callback URL as `https://<your-domain>/api/auth/callback/google`.
+6. Open `/admin`, sign in with an allowlisted Google account, and use **Test analytics connection**
+   on the Settings page to confirm connectivity.
+
+`.env.example` lists every variable; see it for the exact names.
+
+### Verifying the setup end to end
+
+1. Open the public site and accept the analytics consent banner.
+2. Generate a username, then a password.
+3. Open GA4 → Reports → Realtime (or DebugView).
+4. Confirm `username_generated` and `password_generated` arrived, and that neither event's
+   parameters contain the generated value.
+5. Sign in to `/admin` with an allowlisted account and confirm the dashboard shows the same
+   aggregated activity (it can take a few minutes for GA4 to move realtime data into standard
+   reports).
+
+## Security notes
+
+- `/admin` and `/api/admin/*` send `X-Robots-Tag: noindex, nofollow` (see `next.config.ts`) and are
+  disallowed in `app/robots.ts`, so they're never indexed or listed in the public sitemap.
+- Admin sessions expire after 8 hours (`lib/auth.ts`).
+- Authorization is enforced server-side on every page and API route — there is no client-only
+  gate an attacker could bypass by calling the API directly.
+
+## Tests
+
+```sh
+npm run typecheck
+npm run lint
+npm test
 ```
 
-`.env.example` lists the names that belong in the deployment secret manager. The public site does not need any of the private Google credentials to generate usernames or passwords.
-
-## SEO deployment note
-
-The production SEO URLs are configured for `https://makemepassword.com/` in `index.html`, `robots.txt`, and `sitemap.xml`. Update them if the final top-level domain differs. Add public route pages such as `/username-generator` and `/password-generator` only when they contain useful, distinct content; do not create thin duplicate SEO pages.
+Unit tests cover the generators, checkers, admin allowlist logic, date-range resolution, GA4
+response shaping, and the analytics consent/track guard (`tests/`).
