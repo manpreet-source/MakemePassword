@@ -9,7 +9,6 @@ function mockResponse(rows: { dims: string[]; metrics: string[] }[], totals?: st
     })),
     totals: totals ? [{ metricValues: totals.map((value) => ({ value })) }] : undefined,
     rowCount: rows.length,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 }
 

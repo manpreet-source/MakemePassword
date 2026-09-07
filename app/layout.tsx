@@ -33,8 +33,7 @@ const themeInitScript = `(function(){try{var stored=localStorage.getItem(${JSON.
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${dmMono.variable} ${manrope.variable}`}>
-      <body>
-        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+      <body suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <AnalyticsProvider />
         {children}

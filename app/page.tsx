@@ -470,7 +470,6 @@ export default function HomePage() {
                   <p className="card-kicker">USERNAME CHECKER</p>
                   <h3>Spot the obvious.</h3>
                 </div>
-                <span className="local-badge">LOCAL ONLY</span>
               </div>
               <label className="checker-label" htmlFor="usernameInput">
                 Your username
@@ -512,7 +511,6 @@ export default function HomePage() {
                   <p className="card-kicker">PASSWORD CHECKER</p>
                   <h3>Know what to improve.</h3>
                 </div>
-                <span className="local-badge">LOCAL ONLY</span>
               </div>
               <label className="checker-label" htmlFor="passwordInput">
                 Your password
