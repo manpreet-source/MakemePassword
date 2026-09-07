@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f7f4ee" />
+  <meta name="description" content="MakeMePassword generates strong passwords, memorable usernames, and checks credentials locally in your browser. Private, fast, and simple." />
+  <meta name="keywords" content="random username generator, strong password generator, password strength checker, username checker, secure password generator" />
+  <meta property="og:title" content="MakeMePassword | Private username and password generator" />
+  <meta property="og:description" content="Create a strong password and a username that fits you. Generated locally, ready in seconds." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://makemepassword.com/" />
+  <link rel="canonical" href="https://makemepassword.com/" />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <title>MakeMePassword | Private credential generator</title>
+</head>
+<body>
+  <div class="site-shell">
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="MakeMePassword home"><span class="brand-mark">M</span><span>akeMePassword</span></a>
+      <nav class="main-nav" aria-label="Primary navigation">
+        <a href="#generator">Generate</a><a href="#checker">Check mine</a><a href="#security">Security</a><a href="#faq">FAQ</a>
+      </nav>
+      <div class="top-actions"><button class="icon-button" id="themeToggle" type="button" aria-label="Toggle color theme" title="Toggle color theme">◐</button><a class="admin-link" href="README.md#secure-admin-analytics-architecture">Analytics setup <span>↗</span></a></div>
+    </header>
+
+    <main id="top">
+      <section class="hero reveal">
+        <div class="hero-copy"><p class="eyebrow"><span class="status-dot"></span> Local-first credential studio</p><h1>Generate. Check.<br /><em>Protect.</em></h1><p class="hero-lede">Create a username and password, or check credentials you already use. No account, no storage, no noise.</p><a class="button button-dark" href="#generator">Start generating <span>↓</span></a></div>
+        <div class="hero-art" aria-label="Preview of a generated credential" role="img"><div class="art-label">NEW CREDENTIAL</div><div class="art-username">Nova<span>Pixel</span><b>_482</b></div><div class="art-rule"></div><div class="art-password">vQ7!mR2#xL9@<span>pT4$</span></div><div class="art-foot"><span>Generated locally</span><span class="shield">⌁</span></div></div>
+      </section>
+
+      <section class="generator-section" id="generator">
+        <div class="section-heading"><div><p class="eyebrow">01 / Your studio</p><h2>One click from ready.</h2></div><p class="section-note">Every result is created in your browser using cryptographically secure randomness.</p></div>
+        <div class="mode-tabs" role="tablist" aria-label="Generator mode"><button class="mode-tab active" data-mode="both" role="tab" aria-selected="true">Username + Password</button><button class="mode-tab" data-mode="username" role="tab" aria-selected="false">Username</button><button class="mode-tab" data-mode="password" role="tab" aria-selected="false">Password</button></div>
+        <div class="generator-grid">
+          <article class="credential-card username-card"><div class="card-top"><div><p class="card-kicker">YOUR USERNAME</p><h3>Something that sticks.</h3></div><button class="round-button regenerate" data-target="username" type="button" aria-label="Regenerate username" title="Regenerate username">↻</button></div><div class="credential-value" id="usernameValue" aria-live="polite">NovaPixel_482</div><div class="card-controls"><label for="usernameStyle">Style<select id="usernameStyle"><option value="memorable">Memorable</option><option value="gaming">Gaming</option><option value="professional">Professional</option><option value="anonymous">Anonymous</option><option value="minimal">Minimal</option><option value="random">Random</option></select></label><label for="usernameLength">Length <output id="usernameLengthOutput">14</output><input id="usernameLength" type="range" min="6" max="24" value="14" /></label></div><div class="card-actions"><button class="button button-accent copy-button" data-target="usernameValue" type="button">Copy username <span>↗</span></button><button class="text-button regenerate" data-target="username" type="button">Regenerate</button></div></article>
+          <article class="credential-card password-card"><div class="card-top"><div><p class="card-kicker">YOUR PASSWORD</p><h3>Strong by default.</h3></div><button class="round-button regenerate" data-target="password" type="button" aria-label="Regenerate password" title="Regenerate password">↻</button></div><div class="credential-value password-value masked" id="passwordValue" aria-live="polite">vQ7!mR2#xL9@pT4$</div><div class="strength-row"><span>Strength</span><strong id="strengthLabel">Very strong</strong><div class="strength-meter" aria-label="Password strength"><i></i><i></i><i></i><i></i><i></i></div></div><div class="card-controls password-controls"><label for="passwordLength">Length <output id="passwordLengthOutput">18</output><input id="passwordLength" type="range" min="8" max="40" value="18" /></label><div class="toggle-list"><label><input id="includeSymbols" type="checkbox" checked /> Symbols</label><label><input id="excludeAmbiguous" type="checkbox" checked /> Exclude lookalikes</label></div></div><div class="card-actions"><button class="button button-accent copy-button" data-target="passwordValue" type="button">Copy password <span>↗</span></button><button class="text-button" id="togglePassword" type="button">Show</button></div></article>
+        </div>
+        <div class="generator-footer-actions"><button class="regenerate-both" id="regenerateBoth" type="button"><span>✦</span> Regenerate both</button><button class="text-button copy-both" id="copyBoth" type="button">Copy both ↗</button></div>
+        <div class="privacy-note"><span>✧</span><div><strong>Private by design.</strong> Credentials never leave this browser. MakeMePassword does not store, log, or send what you generate.</div></div>
+      </section>
+
+      <section class="checker-section" id="checker"><div class="section-heading"><div><p class="eyebrow">02 / Check mine</p><h2>Already have one?<br /><em>Bring it here.</em></h2></div><p class="section-note">Your input stays in this browser. Nothing is stored, logged, or sent to analytics.</p></div><div class="checker-grid"><article class="checker-card"><div class="card-top"><div><p class="card-kicker">USERNAME CHECKER</p><h3>Spot the obvious.</h3></div><span class="local-badge">LOCAL ONLY</span></div><label class="checker-label" for="usernameInput">Your username</label><div class="input-with-action"><input id="usernameInput" type="text" autocomplete="off" placeholder="e.g. johnsmith1998" /><button class="button button-accent" id="checkUsername" type="button">Check</button></div><div class="check-result" id="usernameResult" hidden><div class="result-heading"><strong id="usernameScore">Not checked</strong><span id="usernameScoreBar" class="result-bar"></span></div><p id="usernameSummary"></p><ul id="usernameRecommendations"></ul></div></article><article class="checker-card checker-password"><div class="card-top"><div><p class="card-kicker">PASSWORD CHECKER</p><h3>Know what to improve.</h3></div><span class="local-badge">LOCAL ONLY</span></div><label class="checker-label" for="passwordInput">Your password</label><div class="input-with-action"><input id="passwordInput" type="password" autocomplete="off" placeholder="Type or paste privately" /><button class="button button-accent" id="checkPassword" type="button">Check</button></div><label class="show-check"><input id="showPasswordInput" type="checkbox" /> Show password</label><div class="check-result" id="passwordResult" hidden><div class="result-heading"><strong id="passwordScore">Not checked</strong><span id="passwordScoreBar" class="result-bar"></span></div><p id="passwordSummary"></p><ul id="passwordRecommendations"></ul><button class="text-button generate-recommendation" id="generateRecommendation" type="button">Generate a stronger password →</button></div></article></div></section>
+
+      <section class="feature-band" id="security"><div class="feature-intro"><p class="eyebrow">03 / The good stuff</p><h2>A clearer path<br /><em>to safer accounts.</em></h2></div><div class="feature-list"><div class="feature-item"><span>01</span><div><h3>Actually random</h3><p>Passwords use the browser's Web Crypto API, never predictable Math.random().</p></div></div><div class="feature-item"><span>02</span><div><h3>Readable when you need it</h3><p>Choose a style that feels like you, from quiet anonymous to full gaming energy.</p></div></div><div class="feature-item"><span>03</span><div><h3>Quietly private</h3><p>Usage analytics measure actions, never credential contents or clipboard data.</p></div></div></div></section>
+
+      <section class="faq-section" id="faq"><div><p class="eyebrow">04 / Good questions</p><h2>Designed to be<br /><em>easy to trust.</em></h2></div><div class="faq-list"><details open><summary>Are generated passwords stored anywhere?</summary><p>No. Generation is performed locally in your browser. The result is not written to a database, URL, or analytics event.</p></details><details><summary>Can I use a generated username anywhere?</summary><p>You can use it wherever you like, but MakeMePassword does not claim platform availability. Availability depends on the service you choose.</p></details><details><summary>How does analytics work?</summary><p>Optional GA4 tracking records anonymous product events such as generation and copy actions. Credential values are deliberately excluded.</p></details></div></section>
+    </main>
+
+    <footer><a class="brand" href="#top"><span class="brand-mark">M</span><span>akeMePassword</span></a><p>Strong identities, made simply.</p><span>© 2026 MakeMePassword</span></footer>
+  </div>
+  <aside class="consent-banner" id="consentBanner" aria-label="Analytics consent"><div><strong>Keep MakeMePassword quiet.</strong><span> Optional analytics help us improve the tool. Credential contents are never collected.</span></div><div class="consent-actions"><button class="text-button" id="rejectAnalytics" type="button">Reject</button><button class="button button-accent" id="acceptAnalytics" type="button">Allow analytics</button></div></aside>
+  <div class="toast" id="toast" role="status" aria-live="polite">Copied to clipboard</div>
+  <script src="app.js"></script>
+</body>
+</html>
