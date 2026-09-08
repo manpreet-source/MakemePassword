@@ -17,6 +17,11 @@ export const analyticsEvents = {
   presetSelected: "preset_selected",
   advancedOptionsOpened: "advanced_options_opened",
   themeChanged: "theme_changed",
+  languageChanged: "language_changed",
+  supportOpened: "support_opened",
+  socialLinkClicked: "social_link_clicked",
+  supportSearchUsed: "support_search_used",
+  contactFormStarted: "contact_form_started",
 } as const;
 
 export const CONSENT_STORAGE_KEY = "makemepassword-analytics-consent";

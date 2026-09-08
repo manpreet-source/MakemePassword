@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import ConsentBanner from "./consent-banner";
 import {
   generateUsername,
@@ -37,6 +38,9 @@ import { checkPassword } from "@/lib/checkers/password";
 import type { CheckResult } from "@/lib/checkers/password";
 import { analyticsEvents, track, THEME_STORAGE_KEY } from "@/lib/analytics/events";
 import { Brand } from "./brand";
+import LanguageSelector from "./language-selector";
+import SiteFooter from "./site-footer";
+import { useI18n } from "./i18n-provider";
 
 type Mode = "password" | "passphrase" | "username";
 type Preset = PasswordPresetKey | "custom";
@@ -76,8 +80,10 @@ function generateUsernameSuggestions(style: UsernameStyle, length: number): stri
 }
 
 export default function HomePage() {
+  const { t } = useI18n();
   const [mode, setMode] = useState<Mode>("password");
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const [passwordOptions, setPasswordOptions] = useState<PasswordOptions>(DEFAULT_PASSWORD_OPTIONS);
   const [preset, setPreset] = useState<Preset>("custom");
@@ -184,10 +190,10 @@ export default function HomePage() {
   async function copyValue(value: string, kind: "username" | "password" | "passphrase") {
     try {
       await navigator.clipboard.writeText(value);
-      showToast(kind === "passphrase" ? "Passphrase copied" : kind === "password" ? "Password copied" : "Username copied");
+      showToast(`${kind === "passphrase" ? t.passphrase : kind === "password" ? t.password : t.username} ${t.copied.toLowerCase()}`);
       track(analyticsEvents.credentialCopied, { credential_type: kind });
     } catch {
-      showToast("Copy unavailable — select the text instead");
+      showToast(t.copyUnavailable);
     }
   }
 
@@ -245,13 +251,13 @@ export default function HomePage() {
 
   const passwordEntropyBits = estimatePasswordEntropyBits(passwordOptions);
   const strengthScore = passwordStrengthScore(passwordEntropyBits);
-  const strengthLabels = ["Very weak", "Weak", "Fair", "Strong", "Very strong"];
+  const strengthLabels = [t.veryWeak, t.weak, t.fair, t.strong, t.veryStrong];
   const passphraseEntropyBits = estimatePassphraseEntropyBits(passphraseOptions);
 
   function runUsernameCheck() {
     const value = usernameInput.trim();
     if (!value) {
-      showToast("Enter a username to check");
+      showToast(t.invalidUsername);
       return;
     }
     const result = checkUsername(value);
@@ -261,7 +267,7 @@ export default function HomePage() {
 
   function runPasswordCheck() {
     if (!passwordInput) {
-      showToast("Enter a password to check");
+      showToast(t.invalidPassword);
       return;
     }
     const result = checkPassword(passwordInput);
@@ -273,15 +279,21 @@ export default function HomePage() {
     <div className="site-shell">
       <header className="topbar">
         <a className="brand" href="#top" aria-label="MakeMePassword home"><Brand /></a>
-        <nav className="main-nav" aria-label="Primary navigation">
-          <a href="#generator">Generate</a>
-          <a href="#checker">Check mine</a>
-          <a href="#security">Security</a>
-          <a href="#faq">FAQ</a>
+        <nav id="primary-navigation" className={`main-nav${menuOpen ? " open" : ""}`} aria-label="Primary navigation">
+          <a href="#generator" onClick={() => setMenuOpen(false)}>{t.generate}</a>
+          <a href="#checker" onClick={() => setMenuOpen(false)}>{t.checkMine}</a>
+          <a href="#security" onClick={() => setMenuOpen(false)}>{t.security}</a>
+          <a href="#faq" onClick={() => setMenuOpen(false)}>{t.faq}</a>
+          <Link className="mobile-nav-support" href="/support" onClick={() => setMenuOpen(false)}>{t.support}</Link>
         </nav>
         <div className="top-actions">
-          <button className="icon-button" type="button" aria-label="Toggle color theme" title="Toggle color theme" onClick={toggleTheme}>
+          <LanguageSelector />
+          <Link className="support-link" href="/support">{t.support}</Link>
+          <button className="icon-button" type="button" aria-label={t.theme} title={t.theme} onClick={toggleTheme}>
             ◐
+          </button>
+          <button className="mobile-menu-toggle" type="button" aria-expanded={menuOpen} aria-controls="primary-navigation" aria-label={menuOpen ? t.close : t.menu} onClick={() => setMenuOpen((open) => !open)}>
+            {menuOpen ? "×" : "☰"}
           </button>
         </div>
       </header>
@@ -289,17 +301,17 @@ export default function HomePage() {
       <main id="top">
         <section className="hero reveal">
           <div className="hero-copy">
-            <p className="eyebrow">
-              <span className="status-dot"></span> Local-first credential studio
+              <p className="eyebrow">
+              <span className="status-dot"></span> {t.heroEyebrow}
             </p>
             <h1>
               Generate. Check.
               <br />
               <em>Protect.</em>
             </h1>
-            <p className="hero-lede">Create a username and password, or check credentials you already use. No account, no storage, no noise.</p>
+            <p className="hero-lede">{t.heroDescription}</p>
             <a className="button button-dark" href="#generator">
-              Start generating <span>↓</span>
+              {t.startGenerating} <span>↓</span>
             </a>
           </div>
           <div className="hero-art" aria-label="Preview of a generated credential" role="img">
@@ -322,10 +334,10 @@ export default function HomePage() {
         <section className="generator-section" id="generator">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">01 / Your studio</p>
-              <h2>One click from ready.</h2>
+              <p className="eyebrow">01 / {t.studio}</p>
+              <h2>{t.oneClick}</h2>
             </div>
-            <p className="section-note">Every result is created in your browser using cryptographically secure randomness.</p>
+            <p className="section-note">{t.localRandomness}</p>
           </div>
           <div className="mode-tabs" role="tablist" aria-label="Generator mode">
             {(["password", "passphrase", "username"] as Mode[]).map((tab) => (
@@ -340,7 +352,7 @@ export default function HomePage() {
                   track("generator_mode_changed", { mode: tab });
                 }}
               >
-                {tab === "password" ? "Password" : tab === "passphrase" ? "Passphrase" : "Username"}
+                {tab === "password" ? t.password : tab === "passphrase" ? t.passphrase : t.username}
               </button>
             ))}
           </div>
@@ -349,14 +361,14 @@ export default function HomePage() {
             <article className="credential-card password-card">
               <div className="card-top">
                 <div>
-                  <p className="card-kicker">YOUR PASSWORD</p>
+                  <p className="card-kicker">{t.password.toUpperCase()}</p>
                   <h3>Strong by default.</h3>
                 </div>
                 <button
                   className="round-button regenerate"
                   type="button"
-                  aria-label="Regenerate password"
-                  title="Regenerate password"
+                  aria-label={`${t.regenerate} ${t.password.toLowerCase()}`}
+                  title={`${t.regenerate} ${t.password.toLowerCase()}`}
                   onClick={() => newPassword(passwordOptions, "regenerate")}
                 >
                   ↻
@@ -366,7 +378,7 @@ export default function HomePage() {
                 {password}
               </div>
               <div className="strength-row">
-                <span>Strength</span>
+                <span>{t.strength}</span>
                 <strong>{strengthLabels[strengthScore - 1]}</strong>
                 <div className="strength-meter" aria-label="Password strength">
                   {[0, 1, 2, 3, 4].map((index) => (
@@ -376,8 +388,8 @@ export default function HomePage() {
               </div>
               <p className="entropy-hint">{passwordEntropyBits} bits estimated entropy</p>
               <div className="card-controls password-controls">
-                <label>
-                  Length <output>{passwordOptions.length}</output>
+                  <label>
+                    {t.length} <output>{passwordOptions.length}</output>
                   <input
                     type="range"
                     min={PASSWORD_MIN_LENGTH}
@@ -388,7 +400,7 @@ export default function HomePage() {
                 </label>
                 <div className="toggle-list">
                   <label>
-                    <input type="checkbox" checked={passwordOptions.symbols} onChange={(event) => updatePassword({ symbols: event.target.checked })} /> Symbols
+                    <input type="checkbox" checked={passwordOptions.symbols} onChange={(event) => updatePassword({ symbols: event.target.checked })} /> {t.symbols}
                   </label>
                   <label>
                     <input
@@ -396,13 +408,13 @@ export default function HomePage() {
                       checked={passwordOptions.excludeAmbiguous}
                       onChange={(event) => updatePassword({ excludeAmbiguous: event.target.checked })}
                     />{" "}
-                    Exclude lookalikes
+                    {t.excludeLookalikes}
                   </label>
                 </div>
                 <label>
-                  Preset
+                  {t.preset}
                   <select value={preset} onChange={(event) => applyPreset(event.target.value as Preset)}>
-                    <option value="custom">Custom</option>
+                    <option value="custom">{t.custom}</option>
                     {PASSWORD_PRESET_ORDER.map((key) => (
                       <option key={key} value={key}>
                         {PASSWORD_PRESET_LABELS[key]}
@@ -412,23 +424,21 @@ export default function HomePage() {
                 </label>
               </div>
               <button type="button" className="text-button advanced-toggle" onClick={openAdvanced} aria-expanded={advancedOpen}>
-                {advancedOpen ? "Hide advanced options" : "Advanced options"}
+                {advancedOpen ? t.hideAdvanced : t.advancedOptions}
               </button>
               {advancedOpen && (
                 <div className="advanced-options">
                   <label>
-                    <input type="checkbox" checked={passwordOptions.avoidRepeated} onChange={(event) => updatePassword({ avoidRepeated: event.target.checked })} /> Avoid
-                    repeated characters
+                    <input type="checkbox" checked={passwordOptions.avoidRepeated} onChange={(event) => updatePassword({ avoidRepeated: event.target.checked })} /> {t.avoidRepeated}
                   </label>
                   <label>
-                    <input type="checkbox" checked={passwordOptions.avoidSequential} onChange={(event) => updatePassword({ avoidSequential: event.target.checked })} /> Avoid
-                    sequential characters
+                    <input type="checkbox" checked={passwordOptions.avoidSequential} onChange={(event) => updatePassword({ avoidSequential: event.target.checked })} /> {t.avoidSequential}
                   </label>
                   <label>
-                    <input type="checkbox" checked={passwordOptions.pronounceable} onChange={(event) => updatePassword({ pronounceable: event.target.checked })} /> Pronounceable
+                    <input type="checkbox" checked={passwordOptions.pronounceable} onChange={(event) => updatePassword({ pronounceable: event.target.checked })} /> {t.pronounceable}
                   </label>
                   <label>
-                    Min numbers
+                    {t.minNumbers}
                     <input
                       type="number"
                       min={0}
@@ -438,7 +448,7 @@ export default function HomePage() {
                     />
                   </label>
                   <label>
-                    Min symbols
+                    {t.minSymbols}
                     <input
                       type="number"
                       min={0}
@@ -451,10 +461,10 @@ export default function HomePage() {
               )}
               <div className="card-actions">
                 <button className="button button-accent copy-button" type="button" onClick={() => copyValue(password, "password")}>
-                  Copy password <span>↗</span>
+                  {t.copy} {t.password.toLowerCase()} <span>↗</span>
                 </button>
                 <button className="text-button" type="button" onClick={() => setPasswordVisible((visible) => !visible)}>
-                  {passwordVisible ? "Hide" : "Show"}
+                  {passwordVisible ? t.hide : t.show}
                 </button>
               </div>
             </article>
@@ -464,14 +474,14 @@ export default function HomePage() {
             <article className="credential-card passphrase-card">
               <div className="card-top">
                 <div>
-                  <p className="card-kicker">YOUR PASSPHRASE</p>
+                  <p className="card-kicker">{t.passphrase.toUpperCase()}</p>
                   <h3>Easy to remember.</h3>
                 </div>
                 <button
                   className="round-button regenerate"
                   type="button"
-                  aria-label="Regenerate passphrase"
-                  title="Regenerate passphrase"
+                  aria-label={`${t.regenerate} ${t.passphrase.toLowerCase()}`}
+                  title={`${t.regenerate} ${t.passphrase.toLowerCase()}`}
                   onClick={() => newPassphrase(passphraseOptions, "regenerate")}
                 >
                   ↻
@@ -483,7 +493,7 @@ export default function HomePage() {
               <p className="entropy-hint">{passphraseEntropyBits} bits estimated entropy</p>
               <div className="card-controls">
                 <label>
-                  Words <output>{passphraseOptions.words}</output>
+                  {t.words} <output>{passphraseOptions.words}</output>
                   <input
                     type="range"
                     min={PASSPHRASE_MIN_WORDS}
@@ -493,7 +503,7 @@ export default function HomePage() {
                   />
                 </label>
                 <label>
-                  Separator
+                  {t.separator}
                   <select
                     value={passphraseOptions.separator}
                     onChange={(event) => updatePassphrase({ separator: event.target.value as PassphraseSeparator })}
@@ -507,7 +517,7 @@ export default function HomePage() {
                 </label>
                 <div className="toggle-list">
                   <label>
-                    <input type="checkbox" checked={passphraseOptions.capitalize} onChange={(event) => updatePassphrase({ capitalize: event.target.checked })} /> Capitalize
+                    <input type="checkbox" checked={passphraseOptions.capitalize} onChange={(event) => updatePassphrase({ capitalize: event.target.checked })} /> {t.capitalize}
                   </label>
                   <label>
                     <input
@@ -515,16 +525,16 @@ export default function HomePage() {
                       checked={passphraseOptions.includeNumber}
                       onChange={(event) => updatePassphrase({ includeNumber: event.target.checked })}
                     />{" "}
-                    Include number
+                    {t.includeNumber}
                   </label>
                 </div>
               </div>
               <div className="card-actions">
                 <button className="button button-accent copy-button" type="button" onClick={() => copyValue(passphrase, "passphrase")}>
-                  Copy passphrase <span>↗</span>
+                  {t.copy} {t.passphrase.toLowerCase()} <span>↗</span>
                 </button>
                 <button className="text-button regenerate" type="button" onClick={() => newPassphrase(passphraseOptions, "regenerate")}>
-                  Regenerate
+                  {t.regenerate}
                 </button>
               </div>
             </article>
@@ -534,7 +544,7 @@ export default function HomePage() {
             <article className="credential-card username-studio">
               <div className="card-top">
                 <div>
-                  <p className="card-kicker">USERNAME STUDIO</p>
+                  <p className="card-kicker">{t.username.toUpperCase()} STUDIO</p>
                   <h3>Something that sticks.</h3>
                 </div>
               </div>
@@ -555,7 +565,7 @@ export default function HomePage() {
               </div>
               <div className="card-controls">
                 <label>
-                  Length <output>{usernameLength}</output>
+                  {t.length} <output>{usernameLength}</output>
                   <input
                     type="range"
                     min={USERNAME_MIN_LENGTH}
@@ -573,7 +583,7 @@ export default function HomePage() {
                       <div>
                         <span className="suggestion-name">{name}</span>
                         <span className="suggestion-meta">
-                          {USERNAME_STYLE_LABELS[usernameStyle]} · {name.length} chars
+                          {USERNAME_STYLE_LABELS[usernameStyle]} · {name.length} {t.chars}
                         </span>
                       </div>
                       <div className="suggestion-actions">
@@ -601,7 +611,7 @@ export default function HomePage() {
                   type="button"
                   onClick={() => newUsernameSuggestions(usernameStyle, usernameLength, "regenerate")}
                 >
-                  Generate more <span>↗</span>
+                  {t.generateMore} <span>↗</span>
                 </button>
               </div>
               {usernameFavorites.length > 0 && (
@@ -625,7 +635,7 @@ export default function HomePage() {
           <div className="privacy-note">
             <span>✧</span>
             <div>
-              <strong>Private by design.</strong> Credentials never leave this browser. MakeMePassword does not store, log, or send what you generate.
+              <strong>{t.privateByDesign}</strong> {t.privateDescription}
             </div>
           </div>
         </section>
@@ -633,7 +643,7 @@ export default function HomePage() {
         <section className="checker-section" id="checker">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">02 / Check mine</p>
+              <p className="eyebrow">02 / {t.checkSection}</p>
               <h2>
                 Already have one?
                 <br />
@@ -646,12 +656,12 @@ export default function HomePage() {
             <article className="checker-card">
               <div className="card-top">
                 <div>
-                  <p className="card-kicker">USERNAME CHECKER</p>
+                  <p className="card-kicker">{t.usernameChecker.toUpperCase()}</p>
                   <h3>Spot the obvious.</h3>
                 </div>
               </div>
               <label className="checker-label" htmlFor="usernameInput">
-                Your username
+                {t.yourUsername}
               </label>
               <div className="input-with-action">
                 <input
@@ -666,7 +676,7 @@ export default function HomePage() {
                   }}
                 />
                 <button className="button button-accent" type="button" onClick={runUsernameCheck}>
-                  Check
+                  {t.check}
                 </button>
               </div>
               {usernameResult && (
@@ -687,19 +697,19 @@ export default function HomePage() {
             <article className="checker-card checker-password">
               <div className="card-top">
                 <div>
-                  <p className="card-kicker">PASSWORD CHECKER</p>
+                  <p className="card-kicker">{t.passwordChecker.toUpperCase()}</p>
                   <h3>Know what to improve.</h3>
                 </div>
               </div>
               <label className="checker-label" htmlFor="passwordInput">
-                Your password
+                {t.yourPassword}
               </label>
               <div className="input-with-action">
                 <input
                   id="passwordInput"
                   type={passwordInputVisible ? "text" : "password"}
                   autoComplete="off"
-                  placeholder="Type or paste privately"
+                  placeholder={t.typePrivately}
                   value={passwordInput}
                   onChange={(event) => setPasswordInput(event.target.value)}
                   onKeyDown={(event) => {
@@ -707,11 +717,11 @@ export default function HomePage() {
                   }}
                 />
                 <button className="button button-accent" type="button" onClick={runPasswordCheck}>
-                  Check
+                  {t.check}
                 </button>
               </div>
               <label className="show-check">
-                <input type="checkbox" checked={passwordInputVisible} onChange={(event) => setPasswordInputVisible(event.target.checked)} /> Show password
+                <input type="checkbox" checked={passwordInputVisible} onChange={(event) => setPasswordInputVisible(event.target.checked)} /> {t.showPassword}
               </label>
               {passwordResult && (
                 <div className="check-result">
@@ -803,11 +813,7 @@ export default function HomePage() {
         </section>
       </main>
 
-      <footer>
-        <a className="brand" href="#top"><Brand /></a>
-        <p>Strong identities, made simply.</p>
-        <span>© 2026 MakeMePassword</span>
-      </footer>
+      <SiteFooter />
 
       <ConsentBanner />
       <div className={`toast${toast.visible ? " show" : ""}`} role="status" aria-live="polite">

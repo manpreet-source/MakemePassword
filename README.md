@@ -21,6 +21,12 @@ Open <http://localhost:3000>.
 - Local username and password checkers with strength levels, reasons, and recommendations. Checked
   and generated values never leave the browser.
 - Responsive layout, dark mode, and an analytics consent banner.
+- Locale-aware public routes for English, Hindi, Spanish, French, German, Portuguese, Arabic,
+   Chinese, Japanese, and Korean. The selector persists the visitor's choice and applies RTL for Arabic.
+- Support and social links are centralized in `lib/site-config.ts`. Set `NEXT_PUBLIC_SUPPORT_EMAIL`
+   and only the official `NEXT_PUBLIC_SOCIAL_*` URLs that exist; blank values stay hidden.
+- `/support` provides validated contact details and opens a local email draft. It does not claim delivery
+   because this project does not currently include an email service.
 
 None of this requires the admin dashboard to be configured — the generator and checker work fully
 offline with no server credentials.
