@@ -1,0 +1,3 @@
+export function Brand({ compact = false }: { compact?: boolean }) {
+  return <span className={`brand-lockup${compact ? " compact" : ""}`} aria-label="MakeMePassword"><span className="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" role="presentation"><path d="M16 5.5a6.8 6.8 0 0 0-6.8 6.8v2.1H7.5v10.2c0 1 .8 1.9 1.9 1.9h13.2c1 0 1.9-.8 1.9-1.9V14.4h-1.7v-2.1A6.8 6.8 0 0 0 16 5.5Zm-3.6 8.9v-2.1a3.6 3.6 0 1 1 7.2 0v2.1h-7.2Z" /><circle cx="16" cy="20" r="1.9" /><path d="m23.8 5.1.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z" /></svg></span>{!compact && <span className="brand-name"><strong>MakeMe</strong><span>Password</span></span>}</span>;
+}

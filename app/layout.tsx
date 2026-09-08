@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { DM_Mono, Manrope } from "next/font/google";
 import "./globals.css";
 import AnalyticsProvider from "./analytics-provider";
-import { THEME_STORAGE_KEY } from "@/lib/analytics/events";
 
 const dmMono = DM_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-mono" });
 const manrope = Manrope({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], variable: "--font-sans" });
@@ -27,14 +26,10 @@ export const metadata: Metadata = {
 
 export const viewport = { themeColor: "#f7f4ee" };
 
-// Applied before hydration so the page never flashes the wrong theme.
-const themeInitScript = `(function(){try{var stored=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});var dark=stored==="dark"||(!stored&&matchMedia("(prefers-color-scheme: dark)").matches);if(dark)document.body.classList.add("dark");}catch(e){}})();`;
-
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${dmMono.variable} ${manrope.variable}`}>
-      <body suppressHydrationWarning>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      <body>
         <AnalyticsProvider />
         {children}
       </body>

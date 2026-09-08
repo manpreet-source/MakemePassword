@@ -5,8 +5,13 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);f
 a{color:inherit;text-decoration:none}
 .site-shell{max-width:1260px;margin:auto;padding:0 42px}
 .topbar{height:88px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
-.brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:-.04em;font-size:19px}
-.brand-mark{background:var(--ink);color:var(--accent);width:28px;height:28px;display:grid;place-items:center;border-radius:8px;font-family:Georgia,serif;font-style:italic}
+.brand{display:inline-flex;align-items:center}
+.brand-lockup{display:flex;align-items:center;gap:11px;font-size:18px;letter-spacing:-.045em}
+.brand-mark{width:32px;height:32px;display:grid;place-items:center;border-radius:10px;background:var(--ink);color:var(--accent);box-shadow:0 5px 14px rgba(32,35,33,.14)}
+.brand-mark svg{width:25px;height:25px;fill:currentColor;overflow:visible}
+.brand-name{display:flex;gap:0;font-weight:600;color:var(--ink)}
+.brand-name strong{font-weight:800}
+.brand-name span{font-weight:500;color:var(--muted)}
 .main-nav{display:flex;gap:32px;color:var(--muted);font-size:13px}
 .main-nav a:hover,.admin-link:hover{color:var(--ink)}
 .top-actions{display:flex;align-items:center;gap:22px}
@@ -126,7 +131,7 @@ footer p{margin:0}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 .checker-section{padding:25px 5% 100px}
 .checker-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-.checker-card{background:var(--card);padding:29px 30px;border:1px solid var(--line);min-height:300px}
+.checker-card{background:var(--card);padding:29px 30px;border:1px solid var(--line);min-height:300px;min-width:0}
 .checker-password{background:#e5e4db}
 .local-badge{font:500 9px var(--mono);letter-spacing:.08em;color:var(--muted);border:1px solid var(--line);padding:7px 8px}
 .checker-label{display:block;font:10px var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:40px 0 10px}
@@ -168,6 +173,8 @@ body.dark{--paper:#202321;--ink:#f7f4ee;--muted:#a5aaa0;--line:#454946;--card:#2
 .dark .button-dark{background:var(--accent);color:#202321}
 .dark .privacy-note strong{color:var(--paper)}
 .dark .brand-mark{background:var(--paper);color:var(--ink)}
+body.dark .brand-name,body.dark .brand-name strong{color:#f7f4ee}
+body.dark .brand-name span{color:#a5aaa0}
 @media(max-width:760px){
 .site-shell{padding:0 20px}
 .topbar{height:70px}
@@ -208,8 +215,11 @@ footer{flex-wrap:wrap;gap:15px}
 /* --- Admin dashboard --- */
 .admin-shell{--admin-bg:#f5f7fb;--admin-sidebar-bg:#111827;--admin-sidebar-fg:#aeb8cb;--admin-card-bg:#fff;--admin-border:#e4e9f0;--admin-text:#172033;--admin-muted:#77839a;--admin-accent:#b7e36b;min-height:100vh;display:flex;background:var(--admin-bg);color:var(--admin-text);font-family:Arial,Helvetica,sans-serif}
 .admin-sidebar{width:238px;background:var(--admin-sidebar-bg);color:var(--admin-sidebar-fg);padding:24px 16px;flex:none}
-.admin-logo{display:flex;gap:10px;align-items:center;color:#fff;font-weight:800;font-size:18px;margin:0 10px 38px}
-.admin-logo-mark{width:28px;height:28px;border-radius:8px;background:var(--admin-accent);color:#111827;display:grid;place-items:center}
+.admin-logo{display:flex;align-items:center;margin:0 10px 38px}
+.admin-logo .brand-lockup{font-size:17px}
+.admin-logo .brand-mark{background:var(--admin-accent);color:#111827;box-shadow:none}
+.admin-logo .brand-name{color:#fff}
+.admin-logo .brand-name span{color:#aeb8cb}
 .admin-nav-label{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:#66738b;margin:22px 12px 8px}
 .admin-nav a{display:block;padding:11px 12px;border-radius:7px;color:inherit;text-decoration:none;font-size:13px}
 .admin-nav a:hover,.admin-nav a.active{background:#253047;color:#fff}

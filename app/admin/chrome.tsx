@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { signOut } from "next-auth/react";
+import { Brand } from "@/app/brand";
 
 const NAV_ITEMS: { key: string; label: string; href: string }[] = [
   { key: "overview", label: "Overview", href: "/admin" },
@@ -35,9 +36,7 @@ export function AdminShell({
   return (
     <div className="admin-shell">
       <aside className="admin-sidebar">
-        <div className="admin-logo">
-          <span className="admin-logo-mark">M</span> MakeMePassword
-        </div>
+        <div className="admin-logo"><Brand /></div>
         <nav className="admin-nav" aria-label="Analytics navigation">
           <div className="admin-nav-label">Workspace</div>
           {NAV_ITEMS.map((item) => (

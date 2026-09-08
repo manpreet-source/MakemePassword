@@ -36,6 +36,7 @@ import { checkUsername } from "@/lib/checkers/username";
 import { checkPassword } from "@/lib/checkers/password";
 import type { CheckResult } from "@/lib/checkers/password";
 import { analyticsEvents, track, THEME_STORAGE_KEY } from "@/lib/analytics/events";
+import { Brand } from "./brand";
 
 type Mode = "password" | "passphrase" | "username";
 type Preset = PasswordPresetKey | "custom";
@@ -271,10 +272,7 @@ export default function HomePage() {
   return (
     <div className="site-shell">
       <header className="topbar">
-        <a className="brand" href="#top" aria-label="MakeMePassword home">
-          <span className="brand-mark">M</span>
-          <span>akeMePassword</span>
-        </a>
+        <a className="brand" href="#top" aria-label="MakeMePassword home"><Brand /></a>
         <nav className="main-nav" aria-label="Primary navigation">
           <a href="#generator">Generate</a>
           <a href="#checker">Check mine</a>
@@ -806,10 +804,7 @@ export default function HomePage() {
       </main>
 
       <footer>
-        <a className="brand" href="#top">
-          <span className="brand-mark">M</span>
-          <span>akeMePassword</span>
-        </a>
+        <a className="brand" href="#top"><Brand /></a>
         <p>Strong identities, made simply.</p>
         <span>© 2026 MakeMePassword</span>
       </footer>
