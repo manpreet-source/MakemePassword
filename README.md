@@ -25,6 +25,17 @@ Open <http://localhost:3000>.
 None of this requires the admin dashboard to be configured — the generator and checker work fully
 offline with no server credentials.
 
+## Supabase connection
+
+Supabase public configuration is available through `lib/supabase/client.ts` and
+`lib/supabase/server.ts`. Set `NEXT_PUBLIC_SUPABASE_URL` and
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `.env.local` or the deployment environment.
+
+Only public Supabase settings are configured. Never put a service-role key in a
+`NEXT_PUBLIC_*` variable. Any future Supabase tables must use Row Level Security policies
+before the browser client is used for reads or writes. Existing admin authentication remains
+protected by NextAuth and is not silently replaced by Supabase.
+
 ## Analytics
 
 GA4 is loaded client-side only after the visitor accepts the consent banner, via

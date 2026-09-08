@@ -18,7 +18,10 @@ export function loadGoogleAnalytics(): void {
   window.dataLayer = window.dataLayer || [];
   window.gtag = (...args: unknown[]) => window.dataLayer.push(args);
   window.gtag("js", new Date());
-  window.gtag("config", measurementId, { anonymize_ip: true });
+  window.gtag("config", measurementId, {
+    anonymize_ip: true,
+    page_path: window.location.pathname,
+  });
 
   const script = document.createElement("script");
   script.async = true;
