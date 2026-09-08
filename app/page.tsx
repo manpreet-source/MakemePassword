@@ -13,6 +13,7 @@ import {
 } from "@/lib/generators/username";
 import {
   generatePassword,
+  estimatePasswordEntropyBits,
   PASSWORD_MIN_LENGTH,
   PASSWORD_MAX_LENGTH,
   PASSWORD_DEFAULT_LENGTH,
@@ -20,31 +21,76 @@ import {
   type PasswordOptions,
 } from "@/lib/generators/password";
 import { PASSWORD_PRESET_LABELS, PASSWORD_PRESET_ORDER, getPasswordPresetOptions, type PasswordPresetKey } from "@/lib/generators/presets";
+import {
+  generatePassphrase,
+  estimatePassphraseEntropyBits,
+  PASSPHRASE_MIN_WORDS,
+  PASSPHRASE_MAX_WORDS,
+  PASSPHRASE_SEPARATORS,
+  PASSPHRASE_SEPARATOR_LABELS,
+  DEFAULT_PASSPHRASE_OPTIONS,
+  type PassphraseOptions,
+  type PassphraseSeparator,
+} from "@/lib/generators/passphrase";
 import { checkUsername } from "@/lib/checkers/username";
 import { checkPassword } from "@/lib/checkers/password";
 import type { CheckResult } from "@/lib/checkers/password";
 import { analyticsEvents, track, THEME_STORAGE_KEY } from "@/lib/analytics/events";
 
-type Mode = "both" | "username" | "password";
+type Mode = "password" | "passphrase" | "username";
 type Preset = PasswordPresetKey | "custom";
+
+const USERNAME_SUGGESTION_COUNT = 5;
+const USERNAME_FAVORITES_STORAGE_KEY = "makemepassword-username-favorites";
+
+const USERNAME_STYLE_EXAMPLES: Record<UsernameStyle, string> = {
+  memorable: "brightorbit482",
+  gaming: "phantomrift77",
+  professional: "novaapex214",
+  anonymous: "quietblank391",
+  minimal: "kx7m2p9q",
+  random: "hJ4np_2v9Lk",
+};
 
 function lengthBucket(length: number): "short" | "standard" | "long" {
   return length < 12 ? "short" : length < 20 ? "standard" : "long";
 }
 
-export default function HomePage() {
-  const [mode, setMode] = useState<Mode>("both");
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+function passwordStrengthScore(entropyBits: number): number {
+  if (entropyBits >= 80) return 5;
+  if (entropyBits >= 60) return 4;
+  if (entropyBits >= 36) return 3;
+  if (entropyBits >= 28) return 2;
+  return 1;
+}
 
-  const [usernameStyle, setUsernameStyle] = useState<UsernameStyle>("memorable");
-  const [usernameLength, setUsernameLength] = useState(USERNAME_DEFAULT_LENGTH);
-  const [username, setUsername] = useState("");
+function generateUsernameSuggestions(style: UsernameStyle, length: number): string[] {
+  const seen = new Set<string>();
+  let attempts = 0;
+  while (seen.size < USERNAME_SUGGESTION_COUNT && attempts < USERNAME_SUGGESTION_COUNT * 6) {
+    seen.add(generateUsername({ style, length }));
+    attempts += 1;
+  }
+  return [...seen];
+}
+
+export default function HomePage() {
+  const [mode, setMode] = useState<Mode>("password");
+  const [theme, setTheme] = useState<"light" | "dark">("light");
 
   const [passwordOptions, setPasswordOptions] = useState<PasswordOptions>(DEFAULT_PASSWORD_OPTIONS);
   const [preset, setPreset] = useState<Preset>("custom");
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+
+  const [passphraseOptions, setPassphraseOptions] = useState<PassphraseOptions>(DEFAULT_PASSPHRASE_OPTIONS);
+  const [passphrase, setPassphrase] = useState("");
+
+  const [usernameStyle, setUsernameStyle] = useState<UsernameStyle>("memorable");
+  const [usernameLength, setUsernameLength] = useState(USERNAME_DEFAULT_LENGTH);
+  const [usernameSuggestions, setUsernameSuggestions] = useState<string[]>([]);
+  const [usernameFavorites, setUsernameFavorites] = useState<string[]>([]);
 
   const [toast, setToast] = useState({ visible: false, message: "" });
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -61,16 +107,6 @@ export default function HomePage() {
     toastTimer.current = setTimeout(() => setToast((state) => ({ ...state, visible: false })), 1800);
   }
 
-  function newUsername(style: UsernameStyle, length: number, trigger: "change" | "regenerate") {
-    const value = generateUsername({ style, length });
-    setUsername(value);
-    track(trigger === "regenerate" ? analyticsEvents.usernameRegenerated : analyticsEvents.usernameGenerated, {
-      generator_type: "username",
-      style,
-      length_bucket: lengthBucket(length),
-    });
-  }
-
   function newPassword(options: PasswordOptions, trigger: "change" | "regenerate") {
     const value = generatePassword(options);
     setPassword(value);
@@ -80,10 +116,32 @@ export default function HomePage() {
     });
   }
 
-  // Generate an initial credential pair once on mount, mirroring the static prototype's load-time behavior.
+  function newPassphrase(options: PassphraseOptions, trigger: "change" | "regenerate") {
+    const value = generatePassphrase(options);
+    setPassphrase(value);
+    track(trigger === "regenerate" ? analyticsEvents.passphraseRegenerated : analyticsEvents.passphraseGenerated, {
+      generator_type: "passphrase",
+      word_count: options.words,
+    });
+  }
+
+  function newUsernameSuggestions(style: UsernameStyle, length: number, trigger: "change" | "regenerate") {
+    const values = generateUsernameSuggestions(style, length);
+    setUsernameSuggestions(values);
+    track(analyticsEvents.usernameSuggestionsGenerated, {
+      generator_type: "username",
+      style,
+      length_bucket: lengthBucket(length),
+      trigger,
+      count: values.length,
+    });
+  }
+
+  // Generate initial credentials once on mount, mirroring the static prototype's load-time behavior.
   useEffect(() => {
-    newUsername(usernameStyle, usernameLength, "change");
     newPassword(passwordOptions, "change");
+    newPassphrase(passphraseOptions, "change");
+    newUsernameSuggestions(usernameStyle, usernameLength, "change");
     track(analyticsEvents.generatorOpened, { generator_type: "combined" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -98,6 +156,13 @@ export default function HomePage() {
     })();
     const initial = stored === "dark" || (!stored && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
     setTheme(initial);
+
+    try {
+      const storedFavorites = window.localStorage.getItem(USERNAME_FAVORITES_STORAGE_KEY);
+      if (storedFavorites) setUsernameFavorites(JSON.parse(storedFavorites));
+    } catch {
+      // Ignore malformed or inaccessible storage; favorites simply start empty.
+    }
   }, []);
 
   useEffect(() => {
@@ -115,12 +180,11 @@ export default function HomePage() {
     track(analyticsEvents.themeChanged, { theme: next });
   }
 
-  async function copy(target: "username" | "password" | "both") {
-    const value = target === "username" ? username : target === "password" ? password : `${username}\n${password}`;
+  async function copyValue(value: string, kind: "username" | "password" | "passphrase") {
     try {
       await navigator.clipboard.writeText(value);
-      showToast(target === "both" ? "Both credentials copied" : "Copied to clipboard");
-      track(analyticsEvents.credentialCopied, { credential_type: target });
+      showToast(kind === "passphrase" ? "Passphrase copied" : kind === "password" ? "Password copied" : "Username copied");
+      track(analyticsEvents.credentialCopied, { credential_type: kind });
     } catch {
       showToast("Copy unavailable — select the text instead");
     }
@@ -147,11 +211,41 @@ export default function HomePage() {
     newPassword(next, "change");
   }
 
-  const strengthScore = Math.min(
-    5,
-    (passwordOptions.length >= 16 ? 2 : 1) + (passwordOptions.symbols ? 1 : 0) + (passwordOptions.length >= 24 ? 1 : 0) + (password.length > 0 ? 1 : 0),
-  );
+  function updatePassphrase(patch: Partial<PassphraseOptions>) {
+    const next = { ...passphraseOptions, ...patch };
+    setPassphraseOptions(next);
+    newPassphrase(next, "change");
+  }
+
+  function selectUsernameStyle(style: UsernameStyle) {
+    setUsernameStyle(style);
+    newUsernameSuggestions(style, usernameLength, "change");
+    track(analyticsEvents.presetSelected, { preset_type: "username_style", preset_name: style });
+  }
+
+  function updateUsernameLength(length: number) {
+    setUsernameLength(length);
+    newUsernameSuggestions(usernameStyle, length, "change");
+  }
+
+  function toggleFavorite(name: string) {
+    setUsernameFavorites((current) => {
+      const isFavorite = current.includes(name);
+      const next = isFavorite ? current.filter((item) => item !== name) : [...current, name];
+      try {
+        window.localStorage.setItem(USERNAME_FAVORITES_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // Ignore storage failures; favorites simply won't persist.
+      }
+      track(isFavorite ? analyticsEvents.usernameUnfavorited : analyticsEvents.usernameFavorited, { generator_type: "username" });
+      return next;
+    });
+  }
+
+  const passwordEntropyBits = estimatePasswordEntropyBits(passwordOptions);
+  const strengthScore = passwordStrengthScore(passwordEntropyBits);
   const strengthLabels = ["Very weak", "Weak", "Fair", "Strong", "Very strong"];
+  const passphraseEntropyBits = estimatePassphraseEntropyBits(passphraseOptions);
 
   function runUsernameCheck() {
     const value = usernameInput.trim();
@@ -236,7 +330,7 @@ export default function HomePage() {
             <p className="section-note">Every result is created in your browser using cryptographically secure randomness.</p>
           </div>
           <div className="mode-tabs" role="tablist" aria-label="Generator mode">
-            {(["both", "username", "password"] as Mode[]).map((tab) => (
+            {(["password", "passphrase", "username"] as Mode[]).map((tab) => (
               <button
                 key={tab}
                 className={`mode-tab${mode === tab ? " active" : ""}`}
@@ -248,74 +342,13 @@ export default function HomePage() {
                   track("generator_mode_changed", { mode: tab });
                 }}
               >
-                {tab === "both" ? "Username + Password" : tab === "username" ? "Username" : "Password"}
+                {tab === "password" ? "Password" : tab === "passphrase" ? "Passphrase" : "Username"}
               </button>
             ))}
           </div>
-          <div className="generator-grid">
-            <article className="credential-card username-card" style={{ display: mode === "password" ? "none" : undefined }}>
-              <div className="card-top">
-                <div>
-                  <p className="card-kicker">YOUR USERNAME</p>
-                  <h3>Something that sticks.</h3>
-                </div>
-                <button
-                  className="round-button regenerate"
-                  type="button"
-                  aria-label="Regenerate username"
-                  title="Regenerate username"
-                  onClick={() => newUsername(usernameStyle, usernameLength, "regenerate")}
-                >
-                  ↻
-                </button>
-              </div>
-              <div className="credential-value" aria-live="polite">
-                {username}
-              </div>
-              <div className="card-controls">
-                <label>
-                  Style
-                  <select
-                    value={usernameStyle}
-                    onChange={(event) => {
-                      const style = event.target.value as UsernameStyle;
-                      setUsernameStyle(style);
-                      newUsername(style, usernameLength, "change");
-                    }}
-                  >
-                    {USERNAME_STYLE_ORDER.map((style) => (
-                      <option key={style} value={style}>
-                        {USERNAME_STYLE_LABELS[style]}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Length <output>{usernameLength}</output>
-                  <input
-                    type="range"
-                    min={USERNAME_MIN_LENGTH}
-                    max={USERNAME_MAX_LENGTH}
-                    value={usernameLength}
-                    onChange={(event) => {
-                      const length = Number(event.target.value);
-                      setUsernameLength(length);
-                      newUsername(usernameStyle, length, "change");
-                    }}
-                  />
-                </label>
-              </div>
-              <div className="card-actions">
-                <button className="button button-accent copy-button" type="button" onClick={() => copy("username")}>
-                  Copy username <span>↗</span>
-                </button>
-                <button className="text-button regenerate" type="button" onClick={() => newUsername(usernameStyle, usernameLength, "regenerate")}>
-                  Regenerate
-                </button>
-              </div>
-            </article>
 
-            <article className="credential-card password-card" style={{ display: mode === "username" ? "none" : undefined }}>
+          {mode === "password" && (
+            <article className="credential-card password-card">
               <div className="card-top">
                 <div>
                   <p className="card-kicker">YOUR PASSWORD</p>
@@ -343,6 +376,7 @@ export default function HomePage() {
                   ))}
                 </div>
               </div>
+              <p className="entropy-hint">{passwordEntropyBits} bits estimated entropy</p>
               <div className="card-controls password-controls">
                 <label>
                   Length <output>{passwordOptions.length}</output>
@@ -418,7 +452,7 @@ export default function HomePage() {
                 </div>
               )}
               <div className="card-actions">
-                <button className="button button-accent copy-button" type="button" onClick={() => copy("password")}>
+                <button className="button button-accent copy-button" type="button" onClick={() => copyValue(password, "password")}>
                   Copy password <span>↗</span>
                 </button>
                 <button className="text-button" type="button" onClick={() => setPasswordVisible((visible) => !visible)}>
@@ -426,23 +460,170 @@ export default function HomePage() {
                 </button>
               </div>
             </article>
-          </div>
-          <div className="generator-footer-actions">
-            <button
-              className="regenerate-both"
-              type="button"
-              onClick={() => {
-                newUsername(usernameStyle, usernameLength, "regenerate");
-                newPassword(passwordOptions, "regenerate");
-                track(analyticsEvents.bothGenerated, { generator_type: "combined" });
-              }}
-            >
-              <span>✦</span> Regenerate both
-            </button>
-            <button className="text-button copy-both" type="button" onClick={() => copy("both")}>
-              Copy both ↗
-            </button>
-          </div>
+          )}
+
+          {mode === "passphrase" && (
+            <article className="credential-card passphrase-card">
+              <div className="card-top">
+                <div>
+                  <p className="card-kicker">YOUR PASSPHRASE</p>
+                  <h3>Easy to remember.</h3>
+                </div>
+                <button
+                  className="round-button regenerate"
+                  type="button"
+                  aria-label="Regenerate passphrase"
+                  title="Regenerate passphrase"
+                  onClick={() => newPassphrase(passphraseOptions, "regenerate")}
+                >
+                  ↻
+                </button>
+              </div>
+              <div className="credential-value passphrase-value" aria-live="polite">
+                {passphrase}
+              </div>
+              <p className="entropy-hint">{passphraseEntropyBits} bits estimated entropy</p>
+              <div className="card-controls">
+                <label>
+                  Words <output>{passphraseOptions.words}</output>
+                  <input
+                    type="range"
+                    min={PASSPHRASE_MIN_WORDS}
+                    max={PASSPHRASE_MAX_WORDS}
+                    value={passphraseOptions.words}
+                    onChange={(event) => updatePassphrase({ words: Number(event.target.value) })}
+                  />
+                </label>
+                <label>
+                  Separator
+                  <select
+                    value={passphraseOptions.separator}
+                    onChange={(event) => updatePassphrase({ separator: event.target.value as PassphraseSeparator })}
+                  >
+                    {PASSPHRASE_SEPARATORS.map((separator) => (
+                      <option key={separator} value={separator}>
+                        {PASSPHRASE_SEPARATOR_LABELS[separator]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="toggle-list">
+                  <label>
+                    <input type="checkbox" checked={passphraseOptions.capitalize} onChange={(event) => updatePassphrase({ capitalize: event.target.checked })} /> Capitalize
+                  </label>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={passphraseOptions.includeNumber}
+                      onChange={(event) => updatePassphrase({ includeNumber: event.target.checked })}
+                    />{" "}
+                    Include number
+                  </label>
+                </div>
+              </div>
+              <div className="card-actions">
+                <button className="button button-accent copy-button" type="button" onClick={() => copyValue(passphrase, "passphrase")}>
+                  Copy passphrase <span>↗</span>
+                </button>
+                <button className="text-button regenerate" type="button" onClick={() => newPassphrase(passphraseOptions, "regenerate")}>
+                  Regenerate
+                </button>
+              </div>
+            </article>
+          )}
+
+          {mode === "username" && (
+            <article className="credential-card username-studio">
+              <div className="card-top">
+                <div>
+                  <p className="card-kicker">USERNAME STUDIO</p>
+                  <h3>Something that sticks.</h3>
+                </div>
+              </div>
+              <div className="style-cards" role="tablist" aria-label="Username style">
+                {USERNAME_STYLE_ORDER.map((style) => (
+                  <button
+                    key={style}
+                    type="button"
+                    className={`style-card${usernameStyle === style ? " active" : ""}`}
+                    role="tab"
+                    aria-selected={usernameStyle === style}
+                    onClick={() => selectUsernameStyle(style)}
+                  >
+                    <span className="style-card-label">{USERNAME_STYLE_LABELS[style]}</span>
+                    <span className="style-card-example">{USERNAME_STYLE_EXAMPLES[style]}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="card-controls">
+                <label>
+                  Length <output>{usernameLength}</output>
+                  <input
+                    type="range"
+                    min={USERNAME_MIN_LENGTH}
+                    max={USERNAME_MAX_LENGTH}
+                    value={usernameLength}
+                    onChange={(event) => updateUsernameLength(Number(event.target.value))}
+                  />
+                </label>
+              </div>
+              <div className="suggestion-list">
+                {usernameSuggestions.map((name) => {
+                  const isFavorite = usernameFavorites.includes(name);
+                  return (
+                    <div className="suggestion-row" key={name}>
+                      <div>
+                        <span className="suggestion-name">{name}</span>
+                        <span className="suggestion-meta">
+                          {USERNAME_STYLE_LABELS[usernameStyle]} · {name.length} chars
+                        </span>
+                      </div>
+                      <div className="suggestion-actions">
+                        <button className="icon-button" type="button" aria-label={`Copy ${name}`} title="Copy" onClick={() => copyValue(name, "username")}>
+                          ⧉
+                        </button>
+                        <button
+                          className={`icon-button favorite${isFavorite ? " active" : ""}`}
+                          type="button"
+                          aria-label={isFavorite ? `Remove ${name} from favorites` : `Favorite ${name}`}
+                          aria-pressed={isFavorite}
+                          title="Favorite"
+                          onClick={() => toggleFavorite(name)}
+                        >
+                          {isFavorite ? "♥" : "♡"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="card-actions">
+                <button
+                  className="button button-accent copy-button"
+                  type="button"
+                  onClick={() => newUsernameSuggestions(usernameStyle, usernameLength, "regenerate")}
+                >
+                  Generate more <span>↗</span>
+                </button>
+              </div>
+              {usernameFavorites.length > 0 && (
+                <div className="favorites-panel">
+                  <p className="card-kicker">FAVORITES</p>
+                  <div className="favorites-list">
+                    {usernameFavorites.map((name) => (
+                      <span className="favorite-chip" key={name}>
+                        {name}
+                        <button type="button" aria-label={`Remove ${name} from favorites`} onClick={() => toggleFavorite(name)}>
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </article>
+          )}
+
           <div className="privacy-note">
             <span>✧</span>
             <div>
@@ -550,6 +731,7 @@ export default function HomePage() {
                     className="text-button generate-recommendation"
                     type="button"
                     onClick={() => {
+                      setMode("password");
                       document.querySelector("#generator")?.scrollIntoView({ behavior: "smooth" });
                       showToast("Use the generator above for a fresh password");
                       track("recommendation_clicked", { generator_type: "password" });

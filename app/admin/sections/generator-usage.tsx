@@ -17,7 +17,8 @@ export default function GeneratorUsageSection({ email }: { email: string }) {
   const cards = [
     { label: "Username generator", description: "Total generations", value: countFor(rows, ["username_generated"]) },
     { label: "Password generator", description: "Total generations", value: countFor(rows, ["password_generated"]) },
-    { label: "Combined generator", description: "Total generations", value: countFor(rows, ["both_generated"]) },
+    { label: "Passphrase generator", description: "Total generations", value: countFor(rows, ["passphrase_generated"]) },
+    { label: "Username favorites", description: "Total suggestions favorited", value: countFor(rows, ["username_favorited"]) },
     { label: "Username checker", description: "Total checks", value: countFor(rows, ["username_checked"]) },
     { label: "Password checker", description: "Total checks", value: countFor(rows, ["password_checked"]) },
     { label: "Copy actions", description: "Total copies", value: countFor(rows, ["credential_copied"]) },

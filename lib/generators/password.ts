@@ -151,6 +151,22 @@ export function generatePassword(rawOptions: Partial<PasswordOptions> = {}): str
   return result;
 }
 
+/**
+ * Estimated entropy in bits from the character pool and length alone. This
+ * is an upper-bound estimate, not a guarantee of real-world crack time.
+ */
+export function estimatePasswordEntropyBits(rawOptions: Partial<PasswordOptions> = {}): number {
+  const options: PasswordOptions = { ...DEFAULT_PASSWORD_OPTIONS, ...rawOptions };
+  const maybeStrip = (chars: string) => (options.excludeAmbiguous ? withoutAmbiguous(chars) : chars);
+  const poolSize =
+    (options.uppercase ? maybeStrip(UPPERCASE).length : 0) +
+    (options.lowercase ? maybeStrip(LOWERCASE).length : 0) +
+    (options.numbers ? maybeStrip(NUMBERS).length : 0) +
+    (options.symbols ? maybeStrip(SYMBOLS).length : 0);
+  if (poolSize <= 1) return 0;
+  return Math.round(options.length * Math.log2(poolSize));
+}
+
 export interface PasswordCharacteristics {
   length: number;
   hasUppercase: boolean;
