@@ -3,6 +3,7 @@ import { DM_Mono, Manrope } from "next/font/google";
 import "./globals.css";
 import AnalyticsProvider from "./analytics-provider";
 import { I18nProvider } from "./i18n-provider";
+import ThemeSync from "./theme-sync";
 import { siteConfig, supportedLocales } from "@/lib/site-config";
 
 const dmMono = DM_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-mono" });
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en" className={`${dmMono.variable} ${manrope.variable}`}>
       <body>
         <AnalyticsProvider />
+        <ThemeSync />
         <I18nProvider>{children}</I18nProvider>
       </body>
     </html>
