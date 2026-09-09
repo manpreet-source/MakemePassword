@@ -70,3 +70,69 @@ export function generateUsername(rawOptions: Partial<UsernameOptions> = {}): str
 
   return result.slice(0, length);
 }
+
+/**
+ * Strips a user-typed name/word down to safe username characters (letters
+ * and digits only — no spaces, punctuation, or emoji), so every downstream
+ * variant is guaranteed usable on virtually any platform's username rules.
+ */
+function sanitizePersonalizeBase(raw: string): string {
+  return raw
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "") // strip accents (é -> e) rather than dropping the letter
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .toLowerCase();
+}
+
+function capitalize(value: string): string {
+  return value.length ? value.charAt(0).toUpperCase() + value.slice(1) : value;
+}
+
+/** Builds one randomized variant of the sanitized base using a random pattern. */
+function buildPersonalizedVariant(base: string): string {
+  switch (secureRandomInt(5)) {
+    case 0: // name + number, e.g. "alexmorgan482"
+      return `${base}${secureRandomInt(9000) + 100}`;
+    case 1: { // Capitalized name + themed word + short number, e.g. "AlexmorganOrbit42"
+      const word = securePick(NOUNS);
+      return `${capitalize(base)}${word}${secureRandomInt(90) + 10}`;
+    }
+    case 2: { // name + separator + short random tag, e.g. "alexmorgan_k7q"
+      const separator = securePick(["_", "."]);
+      const tag = Array.from({ length: 3 }, () => MINIMAL_CHARS[secureRandomInt(MINIMAL_CHARS.length)]).join("");
+      return `${base}${separator}${tag}`;
+    }
+    case 3: { // themed adjective + Capitalized name, e.g. "CosmicAlexmorgan"
+      return `${securePick(ADJECTIVES)}${capitalize(base)}`;
+    }
+    default: { // name + number + single trailing letter, e.g. "alexmorgan73x"
+      return `${base}${secureRandomInt(90) + 10}${securePick(["x", "z", "q", "v"])}`;
+    }
+  }
+}
+
+/**
+ * Generates real, randomized username variants built from a name or word the
+ * user typed. This never calls an external AI service — it's the same
+ * client-side, crypto-secure generator used everywhere else in the app,
+ * just seeded with the user's own text instead of a themed word bank.
+ *
+ * Returns an empty array if the input has no usable letters/digits at all
+ * (e.g. only emoji or punctuation) so the caller can show a clear message
+ * instead of silently returning nothing.
+ */
+export function generatePersonalizedUsernames(rawBase: string, count = 5): string[] {
+  const base = sanitizePersonalizeBase(rawBase).slice(0, USERNAME_MAX_LENGTH - 2);
+  if (!base) return [];
+
+  const seen = new Set<string>();
+  const maxAttempts = count * 10;
+  let attempts = 0;
+  while (seen.size < count && attempts < maxAttempts) {
+    attempts += 1;
+    const variant = buildPersonalizedVariant(base).slice(0, USERNAME_MAX_LENGTH);
+    if (variant.length < USERNAME_MIN_LENGTH) continue;
+    seen.add(variant);
+  }
+  return [...seen];
+}

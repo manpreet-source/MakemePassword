@@ -106,6 +106,13 @@ output{float:right;color:var(--ink);font:500 11px var(--mono)}
 .style-card.active{border-color:var(--ink);background:var(--paper)}
 .style-card.active .style-card-example{color:var(--coral)}
 .username-studio .card-controls{border-top:1px solid var(--line);padding-top:18px;margin-bottom:6px}
+.personalize-block{margin:26px 0 22px;padding-top:20px;border-top:1px solid var(--line)}
+.personalize-block .checker-label{margin-top:0}
+.personalize-hint{font:12px var(--sans);color:var(--muted);line-height:1.6;margin:6px 0 2px}
+.personalize-results{margin-top:8px}
+.suggestion-main{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}
+.suggestion-main .result-bar{max-width:140px;margin-top:2px}
+.personalize-disclaimer{font:10px var(--mono);color:var(--text-muted);line-height:1.6;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
 .suggestion-list{border-top:1px solid var(--line);margin-top:14px}
 .suggestion-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 2px;border-bottom:1px solid var(--line)}
 .suggestion-name{display:block;font:600 16px var(--mono);letter-spacing:-.03em}

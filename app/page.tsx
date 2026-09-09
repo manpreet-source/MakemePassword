@@ -5,6 +5,7 @@ import Link from "next/link";
 import ConsentBanner from "./consent-banner";
 import {
   generateUsername,
+  generatePersonalizedUsernames,
   USERNAME_STYLE_LABELS,
   USERNAME_STYLE_ORDER,
   USERNAME_MIN_LENGTH,
@@ -105,6 +106,10 @@ export default function HomePage() {
   const [usernameSuggestions, setUsernameSuggestions] = useState<string[]>([]);
   const [usernameFavorites, setUsernameFavorites] = useState<string[]>([]);
 
+  const [personalizeInput, setPersonalizeInput] = useState("");
+  const [personalizedSuggestions, setPersonalizedSuggestions] = useState<string[]>([]);
+  const [personalizeAttempted, setPersonalizeAttempted] = useState(false);
+
   const [toast, setToast] = useState({ visible: false, message: "" });
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -153,6 +158,19 @@ export default function HomePage() {
       style,
       length_bucket: lengthBucket(length),
       trigger,
+      count: values.length,
+    });
+  }
+
+  function generateFromName() {
+    const values = generatePersonalizedUsernames(personalizeInput, USERNAME_SUGGESTION_COUNT);
+    setPersonalizedSuggestions(values);
+    setPersonalizeAttempted(true);
+    track(analyticsEvents.usernameSuggestionsGenerated, {
+      generator_type: "username",
+      style: "personalize",
+      length_bucket: lengthBucket(personalizeInput.trim().length || 1),
+      trigger: "change",
       count: values.length,
     });
   }
@@ -683,6 +701,73 @@ export default function HomePage() {
                   </button>
                 ))}
               </div>
+
+              <div className="personalize-block">
+                <label className="checker-label" htmlFor="personalizeInput">
+                  {t.personalizeLabel}
+                </label>
+                <p className="personalize-hint">{t.personalizeHint}</p>
+                <div className="input-with-action">
+                  <input
+                    id="personalizeInput"
+                    type="text"
+                    autoComplete="off"
+                    maxLength={40}
+                    placeholder={t.personalizePlaceholder}
+                    value={personalizeInput}
+                    onChange={(event) => setPersonalizeInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") generateFromName();
+                    }}
+                  />
+                  <button className="button button-accent" type="button" onClick={generateFromName}>
+                    {t.generateFromName}
+                  </button>
+                </div>
+
+                {personalizeAttempted && personalizedSuggestions.length === 0 && (
+                  <p className="form-error" role="alert">
+                    {t.personalizeNoResult}
+                  </p>
+                )}
+
+                {personalizedSuggestions.length > 0 && (
+                  <div className="suggestion-list personalize-results">
+                    {personalizedSuggestions.map((name) => {
+                      const check = checkUsername(name);
+                      const isFavorite = usernameFavorites.includes(name);
+                      return (
+                        <div className="suggestion-row" key={name}>
+                          <div className="suggestion-main">
+                            <span className="suggestion-name">{name}</span>
+                            <span className="suggestion-meta">
+                              {check.label} · {name.length} {t.chars}
+                            </span>
+                            <span className={`result-bar level-${check.score}`}></span>
+                          </div>
+                          <div className="suggestion-actions">
+                            <button className="icon-button" type="button" aria-label={`Copy ${name}`} title="Copy" onClick={() => copyValue(name, "username")}>
+                              ⧉
+                            </button>
+                            <button
+                              className={`icon-button favorite${isFavorite ? " active" : ""}`}
+                              type="button"
+                              aria-label={isFavorite ? `Remove ${name} from favorites` : `Favorite ${name}`}
+                              aria-pressed={isFavorite}
+                              title="Favorite"
+                              onClick={() => toggleFavorite(name)}
+                            >
+                              {isFavorite ? "♥" : "♡"}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <p className="personalize-disclaimer">{t.personalizeDisclaimer}</p>
+                  </div>
+                )}
+              </div>
+
               <div className="card-controls">
                 <label>
                   {t.length} <output>{usernameLength}</output>
