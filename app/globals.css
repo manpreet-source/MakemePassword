@@ -48,7 +48,18 @@ a{color:inherit;text-decoration:none}
 .mode-tab.active{color:var(--ink);border-color:var(--ink)}
 .credential-card{background:var(--card);padding:29px 30px 25px;border:1px solid var(--line);box-shadow:0 8px 28px rgba(32,35,33,.025);max-width:560px;margin:0 auto}
 .password-card{background:var(--credential-surface);color:var(--credential-text);border-color:var(--credential-surface)}
-.entropy-hint{font:10px var(--mono);color:#979d91;margin:-22px 0 24px}
+.entropy-hint{font:10px var(--mono);color:#979d91;margin:0 0 8px;line-height:1.6}
+.crack-time-hint small{opacity:.75;display:inline-block;margin-top:2px}
+.password-breakdown{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;list-style:none;margin:0 0 22px;padding:0;font:10px var(--mono);text-transform:uppercase;letter-spacing:.03em}
+.password-breakdown li{border:1px solid var(--line);border-radius:6px;padding:6px 8px;color:var(--muted);text-align:center;transition:border-color .15s ease,color .15s ease}
+.password-breakdown li.on{color:var(--ink);border-color:var(--accent)}
+.length-sync{display:flex;align-items:center;gap:10px;margin-top:9px}
+.length-sync input[type="range"]{flex:1}
+.length-number{width:60px;flex:none;text-align:center;border:1px solid var(--line);border-radius:4px;background:transparent;color:var(--ink);font:600 12px var(--sans);padding:4px 2px}
+.custom-symbols-field input{margin-top:8px;width:100%;border:1px solid var(--line);border-radius:4px;background:transparent;color:var(--ink);font:12px var(--mono);padding:8px}
+.custom-symbols-field input:disabled{opacity:.45}
+.copy-button.copied{background:var(--success,#3f9142);color:#fff}
+.password-card .form-error{margin:-14px 0 20px}
 .passphrase-card .entropy-hint{color:var(--muted)}
 .card-top{display:flex;justify-content:space-between;align-items:start}
 .card-top h3{font-size:17px;letter-spacing:-.03em;margin:8px 0 0}
@@ -223,6 +234,9 @@ body.dark .input-with-action input,body.dark .support-form input,body.dark .supp
 body.dark .input-with-action input::placeholder{color:var(--text-muted)}
 body.dark .password-card .card-controls,body.dark .password-card .advanced-options{border-color:var(--border-strong)}
 body.dark .password-card label,body.dark .password-card .advanced-options label,body.dark .password-card .advanced-toggle,body.dark .entropy-hint{color:var(--text-secondary)}
+body.dark .password-breakdown li{border-color:var(--border-strong);color:var(--text-secondary)}
+body.dark .password-breakdown li.on{color:var(--text-primary);border-color:var(--info)}
+body.dark .length-number,body.dark .custom-symbols-field input{background:var(--surface-input);color:var(--text-primary);border-color:var(--border)}
 body.dark .strength-row,body.dark .art-label,body.dark .card-kicker,body.dark .art-foot{color:var(--text-secondary)}
 body.dark .strength-row strong{color:var(--success)}
 body.dark .strength-meter i{background:var(--border-strong)}
@@ -284,6 +298,8 @@ footer{flex-wrap:wrap;gap:15px}
 .footer-brand,.footer-bottom{grid-column:1/-1}
 .footer-bottom{gap:12px;flex-wrap:wrap}
 .password-controls{display:block}
+.password-breakdown{grid-template-columns:repeat(2,1fr)}
+.length-number{width:52px}
 .toggle-list{margin-top:20px}
 .mode-tab{padding:12px 7px;font-size:10px}
 .mode-tabs{gap:0;justify-content:space-between}

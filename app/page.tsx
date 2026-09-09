@@ -15,12 +15,17 @@ import {
 import {
   generatePassword,
   estimatePasswordEntropyBits,
+  validatePasswordOptions,
+  getPasswordPoolInfo,
+  describePassword,
+  DEFAULT_SYMBOL_POOL,
   PASSWORD_MIN_LENGTH,
   PASSWORD_MAX_LENGTH,
   PASSWORD_DEFAULT_LENGTH,
   DEFAULT_PASSWORD_OPTIONS,
   type PasswordOptions,
 } from "@/lib/generators/password";
+import { estimateCrackTime } from "@/lib/generators/entropy";
 import { PASSWORD_PRESET_LABELS, PASSWORD_PRESET_ORDER, getPasswordPresetOptions, type PasswordPresetKey } from "@/lib/generators/presets";
 import {
   generatePassphrase,
@@ -61,12 +66,12 @@ function lengthBucket(length: number): "short" | "standard" | "long" {
   return length < 12 ? "short" : length < 20 ? "standard" : "long";
 }
 
-function passwordStrengthScore(entropyBits: number): number {
-  if (entropyBits >= 80) return 5;
-  if (entropyBits >= 60) return 4;
-  if (entropyBits >= 36) return 3;
-  if (entropyBits >= 28) return 2;
-  return 1;
+function passwordStrengthScore(entropyBits: number, characteristics?: { hasRepeatedRun: boolean; hasSequentialRun: boolean }): number {
+  let score = entropyBits >= 80 ? 5 : entropyBits >= 60 ? 4 : entropyBits >= 36 ? 3 : entropyBits >= 28 ? 2 : 1;
+  // Real patterns weaken a password beyond what raw entropy captures.
+  if (characteristics?.hasRepeatedRun) score = Math.max(1, score - 1);
+  if (characteristics?.hasSequentialRun) score = Math.max(1, score - 1);
+  return score;
 }
 
 function generateUsernameSuggestions(style: UsernameStyle, length: number): string[] {
@@ -88,7 +93,8 @@ export default function HomePage() {
   const [passwordOptions, setPasswordOptions] = useState<PasswordOptions>(DEFAULT_PASSWORD_OPTIONS);
   const [preset, setPreset] = useState<Preset>("custom");
   const [password, setPassword] = useState("");
-  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [passwordVisible, setPasswordVisible] = useState(true);
+  const [passwordCopied, setPasswordCopied] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const [passphraseOptions, setPassphraseOptions] = useState<PassphraseOptions>(DEFAULT_PASSPHRASE_OPTIONS);
@@ -115,12 +121,19 @@ export default function HomePage() {
   }
 
   function newPassword(options: PasswordOptions, trigger: "change" | "regenerate") {
-    const value = generatePassword(options);
-    setPassword(value);
-    track(trigger === "regenerate" ? analyticsEvents.passwordRegenerated : analyticsEvents.passwordGenerated, {
-      generator_type: "password",
-      length_bucket: lengthBucket(options.length),
-    });
+    const validation = validatePasswordOptions(options);
+    if (!validation.valid) return; // UI disables Generate in this state; never let a bad config throw mid-render.
+    try {
+      const value = generatePassword(options);
+      setPassword(value);
+      track(trigger === "regenerate" ? analyticsEvents.passwordRegenerated : analyticsEvents.passwordGenerated, {
+        generator_type: "password",
+        length_bucket: lengthBucket(options.length),
+      });
+    } catch {
+      // Defense in depth: validatePasswordOptions should already have caught
+      // this, but never let a generation failure crash the page.
+    }
   }
 
   function newPassphrase(options: PassphraseOptions, trigger: "change" | "regenerate") {
@@ -197,6 +210,19 @@ export default function HomePage() {
     }
   }
 
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  async function copyPassword() {
+    try {
+      await navigator.clipboard.writeText(password);
+      setPasswordCopied(true);
+      track(analyticsEvents.credentialCopied, { credential_type: "password" });
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+      copyTimer.current = setTimeout(() => setPasswordCopied(false), 1800);
+    } catch {
+      showToast(t.copyUnavailable);
+    }
+  }
+
   function applyPreset(next: Preset) {
     setPreset(next);
     if (next === "custom") return;
@@ -215,6 +241,10 @@ export default function HomePage() {
     const next = { ...passwordOptions, ...patch };
     setPasswordOptions(next);
     setPreset("custom");
+    if (!validatePasswordOptions(next).valid) {
+      setPassword(""); // Never show a password that doesn't match the current (invalid) configuration.
+      return;
+    }
     newPassword(next, "change");
   }
 
@@ -249,9 +279,13 @@ export default function HomePage() {
     });
   }
 
+  const passwordValidation = validatePasswordOptions(passwordOptions);
+  const passwordPoolInfo = getPasswordPoolInfo(passwordOptions);
   const passwordEntropyBits = estimatePasswordEntropyBits(passwordOptions);
-  const strengthScore = passwordStrengthScore(passwordEntropyBits);
+  const passwordCharacteristics = password ? describePassword(password) : null;
+  const strengthScore = passwordStrengthScore(passwordEntropyBits, passwordCharacteristics ?? undefined);
   const strengthLabels = [t.veryWeak, t.weak, t.fair, t.strong, t.veryStrong];
+  const passwordCrackTime = estimateCrackTime(passwordEntropyBits);
   const passphraseEntropyBits = estimatePassphraseEntropyBits(passphraseOptions);
 
   function runUsernameCheck() {
@@ -369,36 +403,105 @@ export default function HomePage() {
                   type="button"
                   aria-label={`${t.regenerate} ${t.password.toLowerCase()}`}
                   title={`${t.regenerate} ${t.password.toLowerCase()}`}
+                  disabled={!passwordValidation.valid}
                   onClick={() => newPassword(passwordOptions, "regenerate")}
                 >
                   ↻
                 </button>
               </div>
-              <div className={`credential-value password-value${passwordVisible ? "" : " masked"}`} aria-live="polite" style={{ filter: passwordVisible ? "none" : "blur(5px)" }}>
-                {password}
+              <div
+                className={`credential-value password-value${passwordVisible ? "" : " masked"}`}
+                aria-live="polite"
+                style={{ filter: passwordVisible ? "none" : "blur(5px)" }}
+              >
+                {password || "········"}
               </div>
-              <div className="strength-row">
-                <span>{t.strength}</span>
-                <strong>{strengthLabels[strengthScore - 1]}</strong>
-                <div className="strength-meter" aria-label="Password strength">
-                  {[0, 1, 2, 3, 4].map((index) => (
-                    <i key={index} className={index < strengthScore ? "on" : ""}></i>
-                  ))}
-                </div>
-              </div>
-              <p className="entropy-hint">{passwordEntropyBits} bits estimated entropy</p>
+
+              {!passwordValidation.valid && (
+                <p className="form-error" role="alert">
+                  {passwordValidation.reason === "min_exceeds_length" || passwordValidation.reason === "too_short"
+                    ? t.lengthAtLeast.replace("{min}", String(passwordValidation.minViableLength ?? PASSWORD_MIN_LENGTH))
+                    : t.configInvalid}
+                </p>
+              )}
+
+              {passwordValidation.valid && (
+                <>
+                  <div className="strength-row">
+                    <span>{t.strength}</span>
+                    <strong>{strengthLabels[strengthScore - 1]}</strong>
+                    <div className="strength-meter" aria-label="Password strength">
+                      {[0, 1, 2, 3, 4].map((index) => (
+                        <i key={index} className={index < strengthScore ? "on" : ""}></i>
+                      ))}
+                    </div>
+                  </div>
+
+                  <p className="entropy-hint">
+                    ~{passwordEntropyBits} {t.maxEntropyEstimate.toLowerCase()} · {t.poolSize.toLowerCase()}: {passwordPoolInfo.poolSize}
+                  </p>
+                  <p className="entropy-hint crack-time-hint">
+                    {t.crackTimeLabel}: <strong>{passwordCrackTime.label}</strong>
+                    <br />
+                    <small>{t.crackTimeAssumption.replace("{rate}", passwordCrackTime.guessesPerSecond.toLocaleString())}</small>
+                  </p>
+
+                  {passwordCharacteristics && (
+                    <ul className="password-breakdown" aria-label="Character breakdown">
+                      <li className={passwordCharacteristics.counts.uppercase > 0 ? "on" : ""}>
+                        {t.uppercase}: {passwordCharacteristics.counts.uppercase}
+                      </li>
+                      <li className={passwordCharacteristics.counts.lowercase > 0 ? "on" : ""}>
+                        {t.lowercase}: {passwordCharacteristics.counts.lowercase}
+                      </li>
+                      <li className={passwordCharacteristics.counts.numbers > 0 ? "on" : ""}>
+                        {t.numbers}: {passwordCharacteristics.counts.numbers}
+                      </li>
+                      <li className={passwordCharacteristics.counts.symbols > 0 ? "on" : ""}>
+                        {t.symbols}: {passwordCharacteristics.counts.symbols}
+                      </li>
+                    </ul>
+                  )}
+                </>
+              )}
+
               <div className="card-controls password-controls">
-                  <label>
-                    {t.length} <output>{passwordOptions.length}</output>
-                  <input
-                    type="range"
-                    min={PASSWORD_MIN_LENGTH}
-                    max={PASSWORD_MAX_LENGTH}
-                    value={passwordOptions.length}
-                    onChange={(event) => updatePassword({ length: Number(event.target.value) })}
-                  />
+                <label>
+                  {t.length}
+                  <div className="length-sync">
+                    <input
+                      type="range"
+                      min={PASSWORD_MIN_LENGTH}
+                      max={PASSWORD_MAX_LENGTH}
+                      value={passwordOptions.length}
+                      onChange={(event) => updatePassword({ length: Number(event.target.value) })}
+                    />
+                    <input
+                      type="number"
+                      className="length-number"
+                      min={PASSWORD_MIN_LENGTH}
+                      max={PASSWORD_MAX_LENGTH}
+                      value={passwordOptions.length}
+                      aria-label={t.length}
+                      onChange={(event) => {
+                        const raw = Number(event.target.value);
+                        if (Number.isNaN(raw)) return;
+                        const clamped = Math.min(PASSWORD_MAX_LENGTH, Math.max(PASSWORD_MIN_LENGTH, raw));
+                        updatePassword({ length: clamped });
+                      }}
+                    />
+                  </div>
                 </label>
                 <div className="toggle-list">
+                  <label>
+                    <input type="checkbox" checked={passwordOptions.uppercase} onChange={(event) => updatePassword({ uppercase: event.target.checked })} /> {t.uppercase}
+                  </label>
+                  <label>
+                    <input type="checkbox" checked={passwordOptions.lowercase} onChange={(event) => updatePassword({ lowercase: event.target.checked })} /> {t.lowercase}
+                  </label>
+                  <label>
+                    <input type="checkbox" checked={passwordOptions.numbers} onChange={(event) => updatePassword({ numbers: event.target.checked })} /> {t.numbers}
+                  </label>
                   <label>
                     <input type="checkbox" checked={passwordOptions.symbols} onChange={(event) => updatePassword({ symbols: event.target.checked })} /> {t.symbols}
                   </label>
@@ -457,11 +560,27 @@ export default function HomePage() {
                       onChange={(event) => updatePassword({ minSymbols: Number(event.target.value) })}
                     />
                   </label>
+                  <label className="custom-symbols-field">
+                    {t.customSymbols}
+                    <input
+                      type="text"
+                      inputMode="text"
+                      placeholder={DEFAULT_SYMBOL_POOL}
+                      value={passwordOptions.customSymbols}
+                      onChange={(event) => updatePassword({ customSymbols: event.target.value })}
+                      disabled={!passwordOptions.symbols}
+                    />
+                  </label>
                 </div>
               )}
               <div className="card-actions">
-                <button className="button button-accent copy-button" type="button" onClick={() => copyValue(password, "password")}>
-                  {t.copy} {t.password.toLowerCase()} <span>↗</span>
+                <button
+                  className={`button button-accent copy-button${passwordCopied ? " copied" : ""}`}
+                  type="button"
+                  disabled={!password}
+                  onClick={copyPassword}
+                >
+                  {passwordCopied ? t.copied : `${t.copy} ${t.password.toLowerCase()}`} <span>{passwordCopied ? "✓" : "↗"}</span>
                 </button>
                 <button className="text-button" type="button" onClick={() => setPasswordVisible((visible) => !visible)}>
                   {passwordVisible ? t.hide : t.show}
@@ -469,6 +588,7 @@ export default function HomePage() {
               </div>
             </article>
           )}
+
 
           {mode === "passphrase" && (
             <article className="credential-card passphrase-card">
