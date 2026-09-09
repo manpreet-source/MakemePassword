@@ -22,11 +22,53 @@ Open <http://localhost:3000>.
   and generated values never leave the browser.
 - Responsive layout, dark mode, and an analytics consent banner.
 - Locale-aware public routes for English, Hindi, Spanish, French, German, Portuguese, Arabic,
-   Chinese, Japanese, and Korean. The selector persists the visitor's choice and applies RTL for Arabic.
+   Chinese, Japanese, and Korean. The selector persists the visitor's choice, applies RTL for Arabic,
+   and every UI string — nav, hero, generator, checker, footer, consent banner, and support pages —
+   is fully translated for all ten locales (see "Translations" below).
 - Support and social links are centralized in `lib/site-config.ts`. Set `NEXT_PUBLIC_SUPPORT_EMAIL`
    and only the official `NEXT_PUBLIC_SOCIAL_*` URLs that exist; blank values stay hidden.
-- `/support` provides validated contact details and opens a local email draft. It does not claim delivery
-   because this project does not currently include an email service.
+- `/support` provides a contact form that is validated and rate-limited server-side and saved
+   directly to the `support_messages` table in Supabase (see "Support contact form" below).
+
+## Translations
+
+All strings live in `lib/i18n.ts` as one flat table per locale (`en`, `hi`, `es`, `fr`, `de`, `pt`,
+`ar`, `zh`, `ja`, `ko`). Every locale defines every key used by the app — none of them silently fall
+back to English — so switching languages with the selector in the top bar re-renders the entire UI,
+not just a subset of labels. `LanguageSelector` calls `setLocale`, which updates the React context,
+persists the choice to `localStorage`, updates the URL (`/`, `/hi`, `/es`, ...), and sets
+`document.documentElement.lang`/`dir` (RTL for Arabic).
+
+When adding a new UI string: add the English copy to the `english` object in `lib/i18n.ts` first,
+then add the same key to all nine other locale objects. `npm run typecheck` will fail if a locale is
+missing a key, since `TranslationTable` requires every key from `english`.
+
+## Support contact form
+
+`/support`'s contact form posts to `POST /api/support/contact`, which:
+
+1. Validates the payload with `zod` (name, email, subject, message, category).
+2. Rate-limits by IP (3 requests/minute, 10/hour) using the existing in-memory limiter in
+   `lib/rate-limit.ts`.
+3. Silently drops submissions that fill in the hidden honeypot field.
+4. Inserts the message into the `support_messages` table via the Supabase server client
+   (`lib/supabase/server.ts`), storing only a salted hash of the submitter's IP, never the raw
+   address.
+5. Returns a typed status (`ok`, `invalid`, `rate_limited`, `not_configured`, `error`) that the form
+   uses to show a "Message received" confirmation, an inline error, or — if Supabase isn't configured
+   yet — a direct `mailto:` fallback to `NEXT_PUBLIC_SUPPORT_EMAIL`.
+
+### Setting up the `support_messages` table
+
+Run `supabase/migrations/0001_support_messages.sql` against your Supabase project (SQL editor, or
+`supabase db push`). It creates the table with Row Level Security enabled and a policy that lets the
+public `anon` key **only insert** rows — there is no `select`/`update`/`delete` policy for `anon`, so
+submitted contact details can never be read back through the public API key. Read messages from the
+Supabase dashboard, or query them with a service-role key from a trusted server context if you want
+to build an authenticated inbox into `/admin` later.
+
+This reuses the same `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` variables
+described below — no new environment variables are required.
 
 None of this requires the admin dashboard to be configured — the generator and checker work fully
 offline with no server credentials.
