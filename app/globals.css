@@ -51,12 +51,12 @@ a{color:inherit;text-decoration:none}
 .entropy-hint{font:10px var(--mono);color:#979d91;margin:0 0 8px;line-height:1.6}
 .crack-time-hint small{opacity:.75;display:inline-block;margin-top:2px}
 .password-breakdown{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;list-style:none;margin:0 0 22px;padding:0;font:10px var(--mono);text-transform:uppercase;letter-spacing:.03em}
-.password-breakdown li{border:1px solid var(--line);border-radius:6px;padding:6px 8px;color:var(--muted);text-align:center;transition:border-color .15s ease,color .15s ease}
-.password-breakdown li.on{color:var(--ink);border-color:var(--accent)}
+.password-breakdown li{border:1px solid #454946;border-radius:6px;padding:6px 8px;color:#979d91;text-align:center;transition:border-color .15s ease,color .15s ease}
+.password-breakdown li.on{color:var(--accent);border-color:var(--accent)}
 .length-sync{display:flex;align-items:center;gap:10px;margin-top:9px}
 .length-sync input[type="range"]{flex:1}
-.length-number{width:60px;flex:none;text-align:center;border:1px solid var(--line);border-radius:4px;background:transparent;color:var(--ink);font:600 12px var(--sans);padding:4px 2px}
-.custom-symbols-field input{margin-top:8px;width:100%;border:1px solid var(--line);border-radius:4px;background:transparent;color:var(--ink);font:12px var(--mono);padding:8px}
+.length-number{width:60px;flex:none;text-align:center;border:1px solid #454946;border-radius:4px;background:transparent;color:var(--credential-text);font:600 12px var(--sans);padding:4px 2px}
+.custom-symbols-field input{margin-top:8px;width:100%;border:1px solid #454946;border-radius:4px;background:transparent;color:var(--credential-text);font:12px var(--mono);padding:8px}
 .custom-symbols-field input:disabled{opacity:.45}
 .copy-button.copied{background:var(--success,#3f9142);color:#fff}
 .password-card .form-error{margin:-14px 0 20px}
@@ -234,9 +234,6 @@ body.dark .input-with-action input,body.dark .support-form input,body.dark .supp
 body.dark .input-with-action input::placeholder{color:var(--text-muted)}
 body.dark .password-card .card-controls,body.dark .password-card .advanced-options{border-color:var(--border-strong)}
 body.dark .password-card label,body.dark .password-card .advanced-options label,body.dark .password-card .advanced-toggle,body.dark .entropy-hint{color:var(--text-secondary)}
-body.dark .password-breakdown li{border-color:var(--border-strong);color:var(--text-secondary)}
-body.dark .password-breakdown li.on{color:var(--text-primary);border-color:var(--info)}
-body.dark .length-number,body.dark .custom-symbols-field input{background:var(--surface-input);color:var(--text-primary);border-color:var(--border)}
 body.dark .strength-row,body.dark .art-label,body.dark .card-kicker,body.dark .art-foot{color:var(--text-secondary)}
 body.dark .strength-row strong{color:var(--success)}
 body.dark .strength-meter i{background:var(--border-strong)}
